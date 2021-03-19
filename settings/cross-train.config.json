@@ -1,0 +1,8 @@
+{
+  "PokeBot.en-us": {
+    "rootDialog": true,
+    "triggers": {
+      "BestPokemon": []
+    }
+  }
+}

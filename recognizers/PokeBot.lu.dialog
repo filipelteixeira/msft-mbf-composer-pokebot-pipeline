@@ -1,0 +1,8 @@
+{
+  "$kind": "Microsoft.MultiLanguageRecognizer",
+  "id": "LUIS_PokeBot",
+  "recognizers": {
+    "en-us": "PokeBot.en-us.lu",
+    "": "PokeBot.en-us.lu"
+  }
+}

@@ -1,0 +1,18 @@
+[import](common.lg)
+
+# SendActivity_Welcome
+- ${WelcomeUser()}
+
+# SendActivity_fjCBI2()
+[Activity
+    Text = ${SendActivity_fjCBI2_text()}
+]
+
+# SendActivity_fjCBI2_text()
+- Sorry but i didn't understand the request, can you rephrase it?
+- I didn't quite catch that, can you repeat?
+- Couldn't understand the request, if you are having difficulties, contact us at info@filipelteixeira.com
+# SendActivity_zLCjCC()
+[Activity
+    Text = Clearly there isn't a best pokémon, but I got to love Deoxys. It's an Artificialy Intelligent being, I kind of relate.
+]
