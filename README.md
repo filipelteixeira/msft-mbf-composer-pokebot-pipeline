@@ -211,17 +211,10 @@ trigger:
   - release/*
 ```
 
-3. Add resources with pipelines:
+3. Add step with template reference
 ```yaml
-resources:
-  repositories:
-    - repository: chatbot-pipelines
-      name: chatbot-pipelines/chatbot-pipelines
-      type: git
-```
+pool: 'Hosted Windows 2019 with VS2019'
 
-4. Add step with template reference
-```yaml
 steps:
   - template: 'pipelines\pipeline.yml'
     parameters:
