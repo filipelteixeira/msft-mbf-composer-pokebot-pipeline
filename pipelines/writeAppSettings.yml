@@ -1,0 +1,38 @@
+parameters:
+- name: projectPath
+  type: string
+  default: ''
+- name: resourceGroupServiceConnection
+  type: string
+  default: ''
+- name: keyVaultName
+  type: string
+  default: ''
+- name: microsoftAppIdSecretName
+  type: string
+  default: ''
+- name: microsoftAppPasswordSecretName
+  type: string
+  default: ''
+
+steps:
+- task: AzureKeyVault@1
+  displayName: Get Secrets
+  inputs:
+    azureSubscription: '${{parameters.resourceGroupServiceConnection}}'
+    KeyVaultName: '${{parameters.keyVaultName}}'
+    SecretsFilter: '*'
+    RunAsPreJob: false
+
+- task: Bash@3
+  displayName: Set Microsoft App Secrets
+  inputs:
+    targetType: 'inline'
+    script: |
+      # set key in app settings
+      jq '.MicrosoftAppId = "$(${{parameters.microsoftAppIdSecretName}})"' ${{parameters.projectPath}}/settings/appsettings.json > ${{parameters.projectPath}}/settings/appsettings.json.tmp
+      jq '.MicrosoftAppPassword = "$(${{parameters.microsoftAppPasswordSecretName}})"' ${{parameters.projectPath}}/settings/appsettings.json.tmp > ${{parameters.projectPath}}/settings/appsettings.json.tmp2
+      ls -la ${{parameters.projectPath}}/settings > ${{parameters.projectPath}}/ls.txt
+      rm ${{parameters.projectPath}}/settings/appsettings.json
+      rm ${{parameters.projectPath}}/settings/appsettings.json.tmp
+      mv ${{parameters.projectPath}}/settings/appsettings.json.tmp2 ${{parameters.projectPath}}/settings/appsettings.json

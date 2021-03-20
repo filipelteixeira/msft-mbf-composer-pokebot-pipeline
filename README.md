@@ -191,3 +191,43 @@ You don't need to create a complete list of the Azure resources as covered in **
 | createCosmosDB | Optional | `true` | The CosmosDB resource to create. |
 | createStorage | Optional | `true` | The BlobStorage resource to create. |
 | createAppInsights | Optional | `true` | The AppInsights resource to create. |
+
+
+### Pipeline Definition
+
+### Keys
+Azure Keyvault Keys
+
+
+### How-To implement
+
+1. Create pipeline descriptor (e.g.: pipeline.yml)
+
+2. Configure triggers:
+```yaml
+trigger:
+  - develop
+  - master
+  - release/*
+```
+
+3. Add resources with pipelines:
+```yaml
+resources:
+  repositories:
+    - repository: chatbot-pipelines
+      name: chatbot-pipelines/chatbot-pipelines
+      type: git
+```
+
+4. Add step with template reference
+```yaml
+steps:
+  - template: 'pipelines\pipeline.yml'
+    parameters:
+        resourceGroupName: 'rg-name'
+        appServiceResourceName: 'app-service-name'
+        luisResourceName: 'luis-name'
+        resourceGroupServiceConnection: 'service-connection'
+        keyVaultName: 'keyvault-name'
+```

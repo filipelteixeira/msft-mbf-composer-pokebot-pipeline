@@ -1,0 +1,13 @@
+trigger:
+  - main
+
+pool: 'Hosted Windows 2019 with VS2019'
+
+steps:
+  - template: 'pipelines\pipeline.yml'
+    parameters:
+        resourceGroupName: 'iacoe-unmsbox-rg-01'
+        appServiceResourceName: 'iacoe-chatbot-dev-01'
+        luisResourceName: 'iacoe-luis-dev-rg-01-prediction'
+        resourceGroupServiceConnection: 'iacoe-unmsbox-rg-01'
+        keyVaultName: 'iacoevault'

@@ -1,0 +1,49 @@
+parameters:
+- name: projectPath
+  type: string
+  default: ''
+
+steps:
+- task: Bash@3
+  displayName: Prepare Bot
+  inputs:
+    targetType: 'inline'
+    script: |
+      # download latest runtime code from git
+      if [ ! -d ./runtime ]
+      then
+        mkdir ./runtime
+        cd ./runtime
+
+        git init
+        git remote add -f origin https://github.com/microsoft/BotFramework-Composer.git
+        git config core.sparseCheckout true
+        cp ../Deploy/runtime-sparse-checkout.txt .git/info/sparse-checkout
+        git pull origin master
+        cp -R runtime/dotnet/* .
+        rmdir -R runtime
+        cd ..
+      fi
+
+      # create build directory and copy runtime, as well as declarative assets from source
+      mkdir Build
+      cp -R ./runtime/* Build
+      rm runtime -R
+      mkdir Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/*.botproj Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/*.dialog Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/settings/ Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/recognizers/ Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/generated/ Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/dialogs/ Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/importedDialogs/ Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/language-generation/ Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/language-understanding/ Build/azurewebapp/ComposerDialogs/
+      cp -R ${{parameters.projectPath}}/knowledge-base/ Build/azurewebapp/ComposerDialogs/
+
+      # copy skill manifests, if they exist
+      if [ -d ${{parameters.projectPath}}/manifests ]
+      then
+        cp -R ${{parameters.projectPath}}/manifests Build/azurewebapp/wwwroot/manifests/
+        cp -R ${{parameters.projectPath}}/manifests Build/azurefunctions/wwwroot/manifests/
+      fi

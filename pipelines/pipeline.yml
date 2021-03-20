@@ -1,0 +1,52 @@
+
+
+parameters:
+  - name: resourceGroupName
+    type: string
+  - name: appServiceResourceName
+    type: string
+  - name: luisResourceName
+    type: string
+  - name: resourceGroupServiceConnection
+    type: string
+  - name: keyVaultName
+    type: string
+  - name: microsoftAppIdSecretName
+    default: microsoftAppId
+    type: string
+  - name: microsoftAppPasswordSecretName
+    default: microsoftAppPassword
+    type: string
+  - name: luisAuthoringKeySecretName
+    default: luisAuthoringKey
+    type: string
+  - name: luisEndpointKeySecretName
+    default: luisEndpointKey
+    type: string
+
+
+steps:
+- script: echo Build.SourceBranch = $(Build.SourceBranch)
+- template: writeAppSettings.yml
+  parameters:
+    projectPath: '.'
+    resourceGroupServiceConnection: '${{ parameters.resourceGroupServiceConnection }}'
+    keyVaultName: '${{ parameters.keyVaultName }}'
+    microsoftAppIdSecretName: '${{ parameters.microsoftAppIdSecretName }}'
+    microsoftAppPasswordSecretName: '${{ parameters.microsoftAppPasswordSecretName }}'
+- template: publishAndConfigureLuis.yml
+  parameters:
+    projectPath: '.'
+    resourceGroupServiceConnection: '${{ parameters.resourceGroupServiceConnection }}'
+    keyVaultName: '${{ parameters.keyVaultName }}'
+    luisResourceName: '${{ parameters.luisResourceName }}'
+    resourceGroupName: '${{ parameters.resourceGroupName }}'
+    luisAuthoringKeySecretName: '${{ parameters.luisAuthoringKeySecretName }}'
+    luisEndpointKeySecretName: '${{ parameters.luisEndpointKeySecretName }}'
+- template: prepareBotDefaultRuntime.yml
+  parameters:
+    projectPath: '.'
+- template: buildAndDeployAppService.yml
+  parameters:
+    resourceGroupServiceConnection: '${{ parameters.resourceGroupServiceConnection }}'
+    appServiceResourceName: '${{ parameters.appServiceResourceName }}'

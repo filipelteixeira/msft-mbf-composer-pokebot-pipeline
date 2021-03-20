@@ -1,0 +1,101 @@
+parameters:
+- name: projectPath
+  type: string
+  default: ''
+- name: resourceGroupServiceConnection
+  type: string
+  default: ''
+- name: keyVaultName
+  type: string
+  default: ''
+- name: luisResourceName
+  type: string
+  default: ''
+- name: resourceGroupName
+  type: string
+  default: ''
+- name: luisAuthoringKeySecretName
+  type: string
+  default: ''
+- name: luisEndpointKeySecretName
+  type: string
+  default: ''
+steps:
+- task: AzureKeyVault@1
+  displayName: Get Secrets
+  inputs:
+    azureSubscription: '${{parameters.resourceGroupServiceConnection}}'
+    KeyVaultName: '${{parameters.keyVaultName}}'
+    SecretsFilter: '*'
+    RunAsPreJob: false
+- task: AzureCLI@2
+  displayName: Get Azure Account details
+  inputs:
+    azureSubscription: '${{parameters.resourceGroupServiceConnection}}'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: 'az account get-access-token | jq > access.json'
+    useGlobalConfig: true
+- task: Bash@3
+  displayName: Extract account details
+  inputs: 
+    targetType: 'inline'
+    script: |
+      echo "##vso[task.setvariable variable=token]$(jq '.accessToken' access.json | sed -e 's/^\"//' -e 's/"$//')"
+      echo "##vso[task.setvariable variable=subId]$(jq '.subscription' access.json | sed -e 's/^"//' -e 's/"$//')"
+- task: Bash@3
+  displayName: Publish Luis and Set App Configuration
+  inputs:
+    targetType: 'inline'
+    script: |
+      # set key in app settings
+      echo "set key in app settings"
+      jq '.luis.endpointKey = "$(${{parameters.luisEndpointKeySecretName}})"' ${{parameters.projectPath}}/settings/appsettings.json > ${{parameters.projectPath}}/settings/appsettings.json.tmp
+      rm ${{parameters.projectPath}}/settings/appsettings.json
+      mv ${{parameters.projectPath}}/settings/appsettings.json.tmp ${{parameters.projectPath}}/settings/appsettings.json
+      
+      # validate if authoring key is needed
+      jq '.luis.authoringKey = "$(${{parameters.luisAuthoringKeySecretName}})"' ${{parameters.projectPath}}/settings/appsettings.json > ${{parameters.projectPath}}/settings/appsettings.json.tmp
+      rm ${{parameters.projectPath}}/settings/appsettings.json
+      mv ${{parameters.projectPath}}/settings/appsettings.json.tmp ${{parameters.projectPath}}/settings/appsettings.json
+
+      # get bf-cli
+      echo "get bf-cli"
+      npm i -g @microsoft/botframework-cli
+
+      # delete empty lu and lg files
+      echo "delete empty lu and lg files"
+      find ${{parameters.projectPath}} -type f -name "*.lg" -empty -delete
+      find ${{parameters.projectPath}} -type f -name "*.lu" -empty -delete
+
+      # publish luis app and extract json from response
+      echo "publish luis app and extract json from response"
+      #bf luis:build --botName $(jq -r '.luis.name' ${{parameters.projectPath}}/settings/appsettings.json) --authoringKey $(${{parameters.luisAuthoringKeySecretName}}) --region $(jq -r '.luis.authoringRegion' ${{parameters.projectPath}}/settings/appsettings.json) --in ${{parameters.projectPath}} --out ${{parameters.projectPath}}/generated --dialog=multiLanguage
+      bf luis:build --botName $(jq -r '.luis.name' ${{parameters.projectPath}}/settings/appsettings.json) --authoringKey $(${{parameters.luisAuthoringKeySecretName}}) --region $(jq -r '.luis.authoringRegion' ${{parameters.projectPath}}/settings/appsettings.json) --in ${{parameters.projectPath}}/generated/interruption --out ${{parameters.projectPath}}/generated --dialog=multiLanguage --log --force --suffix=$(jq -r '.luis.environment' ${{parameters.projectPath}}/settings/appsettings.json)
+      
+      # merge resulting generated settings into the appsettings file
+      echo "merge resulting generated settings into the appsettings file"
+      #jq -s '.[0] * .[1]' generated/*.json settings/appsettings.json > ${{parameters.projectPath}}/settings/appsettings.json.tmp
+      #rm ${{parameters.projectPath}}/settings/appsettings.json
+      #mv ${{parameters.projectPath}}/settings/appsettings.json.tmp ${{parameters.projectPath}}/settings/appsettings.json
+
+      #endpoint
+      endpoint=$(jq -r '.luis.authoringRegion' ${{parameters.projectPath}}/settings/appsettings.json)
+      completeEndpoint=$(echo "https://${endpoint}.api.cognitive.microsoft.com")
+      jq --arg endpoint ${completeEndpoint} '.luis.endpoint = $endpoint' ${{parameters.projectPath}}/settings/appsettings.json > ${{parameters.projectPath}}/settings/appsettings.json.tmp
+      rm ${{parameters.projectPath}}/settings/appsettings.json
+      mv ${{parameters.projectPath}}/settings/appsettings.json.tmp ${{parameters.projectPath}}/settings/appsettings.json
+
+      #authoringEndpoint
+      jq --arg endpoint ${completeEndpoint} '.luis.authoringEndpoint = $endpoint' ${{parameters.projectPath}}/settings/appsettings.json > ${{parameters.projectPath}}/settings/appsettings.json.tmp
+      rm ${{parameters.projectPath}}/settings/appsettings.json
+      mv ${{parameters.projectPath}}/settings/appsettings.json.tmp ${{parameters.projectPath}}/settings/appsettings.json
+
+- task: Bash@3
+  displayName: Assign endpoint
+  inputs:
+    targetType: 'inline'
+    script: |
+      # Now we need to assign the endpoint key to all of the luis apps
+      echo "Now we need to assign the endpoint key to all of the luis apps"
+      jq '.luis' generated/*.json | jq 'to_entries | map([.value.appId])' | jq '.[][0]' | while IFS= read -r line ; do id=$(echo $line | sed -e 's/^\"//' -e 's/"$//'); bf luis:application:assignazureaccount --accountName ${{parameters.luisResourceName}} --resourceGroup ${{parameters.resourceGroupName}} --armToken $(token) --azureSubscriptionId $(subId) --appId $id --subscriptionKey $(${{parameters.luisAuthoringKeySecretName}}) --endpoint https://$(jq -r '.luis.authoringRegion' ${{parameters.projectPath}}/settings/appsettings.json).api.cognitive.microsoft.com --json; done

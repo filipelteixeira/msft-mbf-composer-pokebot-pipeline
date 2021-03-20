@@ -1,0 +1,4 @@
+runtime/dotnet/azurewebapp
+runtime/dotnet/azurefunctions
+runtime/dotnet/core
+runtime/dotnet/customaction

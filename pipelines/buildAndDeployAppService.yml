@@ -1,0 +1,27 @@
+parameters:
+- name: resourceGroupServiceConnection
+  type: string
+  default: ''
+- name: appServiceResourceName
+  type: string
+  default: ''
+
+steps:
+- task: NuGetCommand@2
+  displayName: 'Restore Bot'
+  inputs:
+    command: 'custom'
+    arguments: 'restore Build/azurewebapp/Microsoft.BotFramework.Composer.WebApp.csproj -recursive'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: 'Build/azurewebapp/Microsoft.BotFramework.Composer.WebApp.csproj'
+    arguments: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageLocation="$(Build.ArtifactStagingDirectory)"'
+- task: AzureRmWebAppDeployment@4
+  displayName: Deploy Bot
+  inputs:
+    ConnectionType: 'AzureRM'
+    azureSubscription: '${{parameters.resourceGroupServiceConnection}}'
+    appType: 'webApp'
+    WebAppName: '${{parameters.appServiceResourceName}}'
+    packageForLinux: '$(Build.ArtifactStagingDirectory)/**/*.zip'
